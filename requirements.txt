@@ -2,3 +2,4 @@ requests
 undetected-chromedriver
 selenium
 selenium-stealth
+beautifulsoup4
