@@ -52,19 +52,7 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
         driver.get(url)
         time.sleep(random.uniform(5.0, 8.0))  # Allow time for dynamic content to load
 
-        if verbose:
-            print("Scrolling to the bottom of the page...", file=sys.stderr)
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         
-        if verbose:
-            print("Waiting for characteristics section to be present after scroll...", file=sys.stderr)
-        try:
-            wait.until(EC.presence_of_element_located((By.ID, "section-characteristics")))
-            if verbose:
-                print("- Characteristics section is present.", file=sys.stderr)
-        except Exception as e:
-            if verbose:
-                print(f"- Timed out waiting for characteristics section: {e}", file=sys.stderr)
 
         if verbose:
             print("Page loaded. Parsing data...", file=sys.stderr)
