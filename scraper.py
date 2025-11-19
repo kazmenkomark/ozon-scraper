@@ -165,7 +165,7 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
 
                 # Click the thumbnail
                 actions = ActionChains(driver)
-                actions.move_to_element(selector).pause(random.uniform(0.3, 0.7)).click().perform()
+                actions.move_to_element(selector).click().perform()
 
                 # Wait for the 'src' attribute to become different from the old one
                 WebDriverWait(driver, 10).until(
