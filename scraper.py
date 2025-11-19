@@ -157,7 +157,8 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
             if verbose:
                 print(f"- Could not find the initial main image: {e}", file=sys.stderr)
 
-        for i, selector in enumerate(variant_selectors):
+        # Loop through the rest of the variants, skipping the first one which is already loaded
+        for i, selector in enumerate(variant_selectors[1:], start=1):
             try:
                 # Get the 'src' before clicking, to see if it changes
                 old_src = driver.find_element(*main_image_selector).get_attribute("src")
