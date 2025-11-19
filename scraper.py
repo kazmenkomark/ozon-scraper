@@ -78,7 +78,7 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
                 print("Found JSON-LD script. Extracting name, description, and price.", file=sys.stderr)
             json_data = json.loads(script_tag.string)
             scraped_data["name"] = json_data.get("name")
-            scraped_data["description"] = json_data.get("description")
+            scraped_data["description"] = json_data.get("description").replace("\n\n", " ")
             offers = json_data.get("offers", [])
             if isinstance(offers, list) and offers:
                 scraped_data["price"] = offers[0].get("price")
@@ -95,12 +95,41 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
         
         try:
             characteristics_section = driver.find_element(By.ID, "section-characteristics")
-            scraped_data["characteristics_text"] = characteristics_section.text
+            characteristics_text = characteristics_section.text
+            
             if verbose:
-                print("- Characteristics section found and text extracted.", file=sys.stderr)
+                print("- Characteristics section found. Parsing text...", file=sys.stderr)
+
+            lines = characteristics_text.strip().split('\n')
+            
+            # Find the start of the actual characteristics list, skipping headers
+            start_index = 0
+            for i, line in enumerate(lines):
+                if line.strip() == "Добавить к сравнению":
+                    start_index = i + 1
+                    break
+            
+            characteristics_list = []
+            # Process lines in pairs (key, value)
+            # We iterate with a step of 2
+            it = iter(lines[start_index:])
+            for name in it:
+                try:
+                    value = next(it)
+                    characteristics_list.append({"name": name.strip(), "value": value.strip()})
+                except StopIteration:
+                    # This handles the case where there's an odd number of lines
+                    if verbose:
+                        print(f"  - Warning: Characteristic '{name.strip()}' has no value, skipping.", file=sys.stderr)
+            
+            scraped_data["characteristics"] = characteristics_list
+            if verbose:
+                print(f"- Parsed {len(characteristics_list)} characteristics.", file=sys.stderr)
+
         except Exception as e:
             if verbose:
-                print(f"- Could not extract characteristics text: {e}", file=sys.stderr)
+                print(f"- Could not extract or parse characteristics: {e}", file=sys.stderr)
+            scraped_data["characteristics"] = []
 
         image_urls = []
         # Scrape gallery images by clicking variants
