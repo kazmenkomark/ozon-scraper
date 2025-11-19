@@ -50,7 +50,17 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
         if verbose:
             print("Loading page with Selenium to bypass anti-bot...", file=sys.stderr)
         driver.get(url)
-        time.sleep(random.uniform(5.0, 8.0))  # Allow time for dynamic content to load
+        if verbose:
+            print("Waiting for essential page sections (characteristics and description)...", file=sys.stderr)
+        try:
+            # Wait for both the characteristics and description sections to be present
+            wait.until(EC.presence_of_element_located((By.ID, "section-characteristics")))
+            wait.until(EC.presence_of_element_located((By.ID, "section-description")))
+            if verbose:
+                print("- Essential sections are present.", file=sys.stderr)
+        except Exception as e:
+            if verbose:
+                print(f"- Timed out waiting for essential sections: {e}", file=sys.stderr)
 
         
 
