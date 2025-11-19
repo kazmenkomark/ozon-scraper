@@ -133,11 +133,13 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
             scraped_data["characteristics"] = []
 
         image_urls = []
+        main_image_selector = (By.CSS_SELECTOR, "img.pdp_v6.pdp_v7.b95_3_4-a")
+
         # Scrape gallery images by clicking variants
         variant_selectors = driver.find_elements(By.CSS_SELECTOR, "div.pdp_x7")
         if not variant_selectors and verbose:
-            print("!!! No product variants found after scroll. Saving page source for debugging...", file=sys.stderr)
-            page_source_path = "ozon_page_source_after_scroll.html"
+            print("!!! No product variants found. Saving page source for debugging...", file=sys.stderr)
+            page_source_path = "ozon_page_source_no_variants.html"
             with open(page_source_path, "w", encoding="utf-8") as f:
                 f.write(driver.page_source)
             print(f"!!! Page HTML saved to '{page_source_path}'.", file=sys.stderr)
@@ -145,27 +147,41 @@ def scrape_ozon_product(url, verbose=False, show_window=False):
         if variant_selectors and verbose:
             print(f"- Found {len(variant_selectors)} product variants. Scraping gallery images...", file=sys.stderr)
         
+        # The first image is already displayed, so grab it before we start clicking
+        try:
+            initial_image = wait.until(EC.presence_of_element_located(main_image_selector))
+            initial_src = initial_image.get_attribute("src")
+            if initial_src:
+                image_urls.append(initial_src)
+        except Exception as e:
+            if verbose:
+                print(f"- Could not find the initial main image: {e}", file=sys.stderr)
+
         for i, selector in enumerate(variant_selectors):
             try:
-                if verbose:
-                    print(f"  - Clicking variant {i+1}/{len(variant_selectors)}...", file=sys.stderr)
+                # Get the 'src' before clicking, to see if it changes
+                old_src = driver.find_element(*main_image_selector).get_attribute("src")
+
+                # Click the thumbnail
                 actions = ActionChains(driver)
                 actions.move_to_element(selector).pause(random.uniform(0.3, 0.7)).click().perform()
-                time.sleep(random.uniform(0.8, 1.5))
-                
-                image_element = wait.until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "img.pdp_v6.pdp_v7.b95_3_4-a")
-                    )
+
+                # Wait for the 'src' attribute to become different from the old one
+                WebDriverWait(driver, 10).until(
+                    lambda d: d.find_element(*main_image_selector).get_attribute("src") != old_src
                 )
-                image_url = image_element.get_attribute("src")
-                if image_url:
-                    image_urls.append(image_url)
+                
+                # Get the new 'src' after it has changed
+                new_src = driver.find_element(*main_image_selector).get_attribute("src")
+                if new_src:
+                    image_urls.append(new_src)
                     if verbose:
-                        print(f"    - Extracted image URL: {image_url}", file=sys.stderr)
+                        print(f"  - Extracted new image URL for variant {i+1}: {new_src}", file=sys.stderr)
+
             except Exception as e:
                 if verbose:
-                    print(f"  - Error processing gallery variant {i+1}: {e}", file=sys.stderr)
+                    # A timeout here usually just means the click didn't change the image (e.g., clicking the same color)
+                    print(f"  - Note: Image may not have changed for variant {i+1}. Skipping.", file=sys.stderr)
 
         # Scrape description images
         try:
